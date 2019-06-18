@@ -13,6 +13,7 @@
 #include <string>
 #include <cstring> //memset
 #include <set>
+#include <vector>
 #include <cfloat> //DBL_MAX
 
 using namespace std;

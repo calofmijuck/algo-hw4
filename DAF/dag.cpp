@@ -30,6 +30,7 @@ int** dagParentQuery = NULL; //dagParentQuery[i]: parent of node i
 int* dagChildQuerySize = NULL; //dagChildQuerySize[i]: the number of children of node i
 int* dagParentQuerySize = NULL; //dagParentQuerySize[i]: the number of parent on node i
 
+vector<set<int>> adjListData;
 
 void buildDAG()
 {
@@ -147,6 +148,7 @@ void readDataGraph(string aFileName)
             }
             labelData = new int[numDataNode];
             degreeData = new int[numDataNode];
+            adjListData.resize(numDataNode);
             memset(degreeData, 0, sizeof(int) * (numDataNode));
         }
         else if( line[0] == 'v' ) {
@@ -179,6 +181,8 @@ void readDataGraph(string aFileName)
             //Make sure not to increase two times
             ++degreeData[left];
             ++degreeData[right];
+            adjListData[left].insert(right);
+            adjListData[right].insert(left);
         }
     }
 
@@ -330,6 +334,41 @@ void readQueryGraph(ifstream& aInFile, int aSumDegree)
     }
 }
 
+int getCandidateSetSize(int queryNodeNumber) {
+    int sz = 0;
+    for (int i = 0; i < numDataNode; i++) {
+        if (labelData[i] != labelQuery[queryNodeNumber]) continue;
+        if (degreeData[i] < degreeQuery[queryNodeNumber]) continue;
+        // additional rule
+        set<int> adj = adjListData[i];
+        multiset<int> degree_data;
+        vector<int> degree_query;
+        for (int j : adjListData[i]) {
+            degree_data.insert(degreeData[j]);
+        }
+        for (int j = adjIndexQuery[queryNodeNumber]; j < adjIndexQuery[queryNodeNumber + 1]; j++) {
+            degree_query.push_back(degreeQuery[adjListQuery[j]]);
+        }
+
+        sort(degree_query.begin(), degree_query.end());
+        reverse(degree_query.begin(), degree_query.end());
+
+        bool fail = false;
+        for (int j : degree_query) {
+            auto it = upper_bound(degree_data.begin(), degree_data.end(), j-1);
+            if (it != degree_data.end()) degree_data.erase(it);
+            else {
+                fail = true;
+                break;
+            }
+        }
+        if (fail) continue;
+        sz++;
+    }
+    return sz;
+}
+
+int cnt = 0;
 int selectRoot()
 {
     int root = -1;
@@ -348,14 +387,17 @@ int selectRoot()
 
         int numInitCand = end - mid;
 
-        rank = numInitCand/(double)degree;
-
+        // rank = numInitCand/(double)degree;
+        // rank = numInitCand;
+        rank = getCandidateSetSize(i);
+        // fprintf(stderr, "orig value = %d, getCandidateSetSize = %d\n", numInitCand, getCandidateSetSize(i));
         if( rank < rootRank ) {
             root = i;
             rootRank = rank;
         }
     }
 
+    fprintf(stderr, "%d: Selected root: %d\n", cnt++, root);
     return root;
 }
 
