@@ -1,0 +1,158 @@
+\documentclass[12pt]{article}
+\usepackage{geometry}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{graphicx}
+\geometry{
+	top = 20mm,
+	left = 25mm,
+	right = 25mm,
+	bottom = 20mm
+}
+\geometry{a4paper}
+%\renewcommand{\familydefault}{\sfdefault}
+\renewcommand{\baselinestretch}{1.3}
+
+\definecolor{mGreen}{rgb}{0,0.6,0}
+\definecolor{mGray}{rgb}{0.5,0.5,0.5}
+\definecolor{mPurple}{rgb}{0.58,0,0.82}
+\definecolor{mRed}{rgb}{1, 0, 0}
+\definecolor{backgroundColour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{CStyle}{
+	commentstyle=\color{mGreen},
+	keywordstyle=\color{mPurple},
+	numberstyle=\tiny\color{mGray},
+	stringstyle=\color{mGreen},
+	basicstyle=\ttfamily\footnotesize,
+	emph = {},
+	emphstyle=\color{red},
+	breakatwhitespace=false,         
+	breaklines=true,                 
+	captionpos=b,                    
+	keepspaces=true,                 
+	numbers=left,                    
+	numbersep=10pt,                  
+	showspaces=false,                
+	showstringspaces=false,
+	showtabs=false,                  
+	tabsize=4,
+	language=C++,
+}
+
+\lstdefinestyle{PyStyle}{
+	commentstyle=\color{mGreen},
+	keywordstyle=\color{mPurple},
+	numberstyle=\tiny\color{mGray},
+	stringstyle=\color{mGreen},
+	basicstyle=\ttfamily\footnotesize,
+	emph = {},
+	emphstyle=\color{red},
+	breakatwhitespace=false,         
+	breaklines=true,                 
+	captionpos=b,                    
+	keepspaces=true,                 
+	numbers=left,                    
+	numbersep=-10pt,                  
+	showspaces=false,                
+	showstringspaces=false,
+	showtabs=false,                  
+	tabsize=4,
+	language=Python,
+}
+
+\begin{document} 
+%opening
+\title{\sffamily Algorithms: Optimizing Subgraph Isomorphism}
+\author{\sffamily
+	{\normalsize 2017-12690 \textbf{Muhwan Kim} \quad 2017-17319 \textbf{Dongwoo Kim} \quad 2017-18570 \textbf{Sungchan Yi}}\\
+	\sffamily \normalsize Department of Computer Science and Engineering}
+\date{\sffamily \normalsize June 19th, 2019}
+
+\maketitle
+\tableofcontents
+
+\section{Introduction}
+In this homework, we optimize a subgraph matching algorithm introduced in the paper we were given. Given a data graph $G$ and a query graph $q$, the DAF algorithm finds all matches of $q$ in $G$ from a directed acyclic graph (DAG) of the query graph $q$. There are many ways to choose a DAG from the query graph, and our job for this assignment is to find a rooted DAG of the query graph that will show better performance with the DAF algorithm within 1 minute.\\
+The performance of the algorithm will be measured as follows.
+\begin{itemize}
+	\item Average Total Time per Query
+	\item Number of Recursive Calls
+	\item Number of Solved Queries
+\end{itemize}
+
+\section{Observation}
+Our first observation was the selection of the root for the DAG. Originally, the root $r$ was chosen by
+\begin{equation}
+	r =  \underset{u \in V(q)}{\mathrm{argmin}}\, \frac{|C_{\mathrm{ini}}(u)|}{\deg _q (u)}
+\end{equation}
+This was because:
+\begin{itemize}
+	\item The size of the initial candidate set $C_{\mathrm{ini}}(u)$ should be minimized to reduce the search space for backtracking.
+	\item $\deg_q (u)$ should be maximized since we want to choose a vertex with a higher degree to rule out more possible candidates for the root.
+\end{itemize}
+Our observation was that the ratio of these two factors would not guarantee the optimal choice for the root. Thus we tried choosing a root only from $|C_{\mathrm{ini}}(u)|$ and saw a slight increase in performance. After many hours of trial and error, we couldn't get any better. Then we realized that $\deg_q(u)$ was a factor that could affect the performance. Even though $|C_{\mathrm{ini}}(u)|$ is the same, the degree of a vertex could affect the performance when backtracking. So we added the $\deg_q(u)$ term again and tried other equations such as $\mathrm{argmin} \frac{|C_{\mathrm{ini}}(u)|}{\log (1+ \deg_q(u))}$, but didn't get any significant result.\\
+Then we thought that reducing $\deg_q(u)$ would be better for backtracking, so we added a parameter $k$ and used the equation
+\begin{equation}
+	r =  \underset{u \in V(q)}{\mathrm{argmin}}\,\left\{ |C_{\mathrm{ini}}(u)| + k \cdot \deg_q(u)\right\}
+\end{equation}
+The parameter $k$ represents how much weight we want to put on the degree of the vertex.
+
+\section{Implementation}
+We only changed a single line.
+\begin{lstlisting}[style=Cstyle]
+// dag.cpp, Line 351
+	int k = 5; // Also : 10, 15, 20, 25, 30
+	rank = numInitCand + k * degree;
+\end{lstlisting}
+
+\section{Experiments}
+\subsection{Environment}
+The following is the specification for the test environment.
+\begin{itemize}
+	\item OS: Ubuntu 18.04.2
+	\item CPU: Intel(R) Xeon(R) W-2133 CPU @ 3.60GHz $\times$ 6
+	\item \texttt{g++}: \texttt{7.4.0} \texttt{-std=c++11}
+	\item RAM: 32GB  
+\end{itemize}
+We first checked the running time of the original algorithm.
+
+\subsection{Results}
+The following are the results for the DAF algorithm.
+\subsubsection{Original Implementation}
+This is the result generated by choosing the root of the rooted DAG from equation (1).
+\begin{center}
+	\begin{tabular}{|c|c|c|}
+		\hline
+		Average Total Time & Recursive Calls & Solved Queries  \\ \hline
+		75.3564 ms & 30885.7683 & 82\\ \hline 
+	\end{tabular}\\~\\
+\textbf{Table 1}. Results of original implementation
+\end{center}
+
+\subsubsection{Our Implementation}
+This is the result generated by choosing the root of the rooted DAG from equation (2). We ran some experiments to find an optimal value of parameter $k$, to check if it existed.\\
+The last column shows the reduced average total time compared to the original implementation.
+\begin{center}
+	\begin{tabular}{|c|c|c|c|c|}
+		\hline
+		$k$ & Average Total Time & Recursive Calls & Solved Queries & Reduced (\%) \\ \hline
+		$k=5$ & 71.4657 ms & 26117.5882 & 85 & 5.1\\ \hline
+		$k=10$ & 67.6965 ms& 25183.1461& 89 & 10.1\\ \hline
+		$k=15$ & 67.7463 ms& 24944.4111& 90& 10.1\\ \hline
+		$k=20$ & 67.2010 ms& 24836.4396& 91& 10.8\\ \hline
+		$k=25$ & \textbf{66.6055} ms& 24847.1758& \textbf{91}& \textbf{11.6}\\ \hline
+		$k=30$ & 67.3575 ms & 24834.2967 & 91 & 10.6\\\hline
+	\end{tabular}\\~\\
+\textbf{Table 2}. Results of our implementation for different values of $k$
+\end{center}
+
+\subsection{Analysis}
+As $k$ increased, we observed that the performance got better, and performance started to decrease after $k=30$. Thus we found that setting $k=25$ gave the best performance in terms of average total time and solved queries. We can infer that the degree of a vertex should have about 25 times more weight when choosing a root for the root DAG, to improve the performance. But the major flaw here is that this setting may only work for this \texttt{human} dataset we were given to experiment with. Whether this could be a general method for choosing the root is unknown.
+
+\section{Conclusion}
+Through this assignment, we gained knowledge about subgraph isomorphism problem, and we tried to optimize the preprocessing of query graph $q$ into a DAG. We mainly focused on choosing the best root for the rooted DAG, and improved the performance of the DAF algorithm by choosing the root by equation (2). We arrived at a conclusion that the degree of a vertex should be taken into account when choosing the root for the DAG, and setting 25 times more weight onto the degree gave the best performance among our experiments.
+
+\end{document}
+
