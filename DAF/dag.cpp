@@ -2,7 +2,7 @@
 // Author   : Geonmo Gu
 // Version  : 1.000
 // Copyright: Apache License 2.0
-
+#include <cmath>
 #include "dag.h"
 
 //Variables for data graph
@@ -59,7 +59,7 @@ void buildDAG()
             dagChildQuery[i] = NULL;
         }
         dagChildQuery[i] = new int[degreeQuery[i]];
-        
+
         if( dagParentQuery[i] != NULL ) {
             delete[] dagParentQuery[i];
             dagParentQuery[i] = NULL;
@@ -274,7 +274,7 @@ bool sortByLabel(int aNode1, int aNode2)
 
 bool sortByDegreeQuery(int aNode1, int aNode2)
 {
-    return (degreeQuery[aNode1] > degreeQuery[aNode2]);
+    return (degreeQuery[aNode1] < degreeQuery[aNode2]);
 }
 
 bool sortByLabelFreqQuery(int aNode1, int aNode2)
@@ -286,7 +286,7 @@ bool sortByLabelFreqQuery(int aNode1, int aNode2)
 }
 
 //read one query graph
-void readQueryGraph(ifstream& aInFile, int aSumDegree) 
+void readQueryGraph(ifstream& aInFile, int aSumDegree)
 {
 //////////////////
     //allocate memory
@@ -307,7 +307,7 @@ void readQueryGraph(ifstream& aInFile, int aSumDegree)
             delete[] adjListQuery;
             adjListQuery = NULL;
         }
-        
+
         adjListQuery = new int[aSumDegree];
         sumQueryDegree = aSumDegree;
     }
@@ -341,14 +341,14 @@ int selectRoot()
     for (int i = 0; i < numQueryNode; ++i) {
         label = labelQuery[i];
         degree = degreeQuery[i];
-        
+
         int start = idxSortedData[label];
         int end = idxSortedData[label + 1];
         int mid = binaryLowerBound(start, end - 1, degree);
 
         int numInitCand = end - mid;
 
-        rank = numInitCand/(double)degree;
+        rank = numInitCand + k * degree;
 
         if( rank < rootRank ) {
             root = i;
@@ -402,14 +402,14 @@ void clearMemory()
         delete[] dagParentQuerySize;
     if(dagChildQuery != NULL) {
         for(int i = 0; i < numQueryNode; ++i) {
-            if(dagChildQuery[i] != NULL) 
+            if(dagChildQuery[i] != NULL)
                 delete[] dagChildQuery[i];
         }
         delete[] dagChildQuery;
     }
     if(dagParentQuery != NULL) {
         for(int i = 0; i < numQueryNode; ++i) {
-            if(dagParentQuery[i] != NULL) 
+            if(dagParentQuery[i] != NULL)
                 delete[] dagParentQuery[i];
         }
         delete[] dagParentQuery;
